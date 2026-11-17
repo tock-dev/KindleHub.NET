@@ -1,12 +1,12 @@
 # KindleHub.NET
-98% completed! Quite a lot of features requiring server is wired up now (except for admin/moderator-specific functions, I can't implement them without admin/mod roles). Also, aran, do NOT fuck with the GPL.
+Native .NET client for KindleHub Pro. The default connection uses the same-site API route used by the current web application. See [TESTING.md](TESTING.md) for verified features, automated checks, and remaining limitations.
 
 Cross-platform KindleHub client with a VB.NET core library and Avalonia UI frontend. Desktop builds run on Windows, Linux, and macOS; an Android mobile host is in its initial port phase. (The iOS host was removed.)
 
 ## Architecture
 
 - **KindleHub.Core** (VB.NET, .NET 8.0) - Core library with:
-  - Authentication (SHA-256 + PBKDF2/AES-GCM compatible with JS `_userKey`/`_khPackAccount`)
+  - Authentication (SHA-256 + AES-GCM; password-derived KHA2 envelopes, including recovery metadata)
   - Supabase REST API client
   - Domain models (UserProfile, Group, Message, LeaderboardEntry, AppInfo, etc.)
 
@@ -183,17 +183,35 @@ sudo pacman -S gtk3
 
 ## API Configuration
 
-The client connects to: `https://kindlehub-api.arancool3000.workers.dev` (Supabase `/rest/v1/`)
+The default API base is `https://kindlehub.pro/t/api`, the web application's
+same-site tunnel. It serves the existing `/rest/v1/` API. The direct worker
+address failed the native .NET reachability test during this repair; the same-site
+route passed public feature tests. No browser identity spoofing is required.
 
-To use a different backend, modify `KindleHub.Core/Api/KindleHubApiClient.vb`:
-```vb
-Private Const BaseUrl As String = "https://your-api-endpoint.workers.dev/rest/v1/"
+For a self-hosted backend, set `KindleHubApiOptions.BaseUrl` when constructing the
+core. The base URL must include any route prefix and exclude `/rest/v1/`.
+
+This is an unofficial client: server permissions, moderation, rate limits, and
+subscriptions still apply. It does not override server refusals.
+
+## Automated tests
+
+Install the .NET 10 SDK and the .NET 8 runtime (the desktop/game runner targets
+.NET 8), then run:
+
+```bash
+./test.sh
+# Also check the real public service (no writes or credentials):
+KINDLEHUB_LIVE_TESTS=1 ./test.sh
+# Explicitly create/reuse disposable accounts and test private writes:
+KINDLEHUB_LIVE_ACCOUNT_TESTS=1 KINDLEHUB_LIVE_TESTS=1 ./test.sh
 ```
-See how to host your own instance (still legacy compared to the latest version due to owner taking down repo after implementing Stripe payments in the jankiest way possible) [here](https://github.com/SuprUsr123/KindleHub-Pro-Full-Archive)
+
+The script also finds SDKs installed in `~/.dotnet`. For direct CLI commands,
+put that directory first in `PATH`. Desktop builds do not require the Android
+workload. Release CI runs deterministic API/state tests, headless UI tests, and
+the existing game suite before publishing.
+
 ## License
 
 GPL License - see LICENSE file for details. (why does the agent keep messing this up, why was it originally MIT)
-
-## NOTICE
-I'm so fucking tired with KindleHub, you know what, this client is discontinued, aran TRULY hates open-source software, privacy, and transparency. The APIs no longer work. They all report being "Forbidden".
-Wow aran. You did a perfect job of trying to hide your steps, and it's absolutely perfect for the community to stay dumb about what you did, amirite guys????? "Yo pay me because I need credits for Claude Max-" dude your site looks like you only did one fucking prompt every time you wanted to update anything, and shipped without a SINGLE FORM OF TESTING. And, better yet, that doesn't even look like you used Claude.
